@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block title %}Admin login — {{ business_name }}{% endblock %}
+{% block content %}
+<section class="card">
+  <h1>Admin login</h1>
+  <p class="lede">Enter the admin password to review invoices.</p>
+  {% if error %}<p class="error">{{ error }}</p>{% endif %}
+  <form method="post" action="{{ url_for('login') }}">
+    <label for="password">Password</label>
+    <input id="password" name="password" type="password" required autofocus>
+    <button type="submit">Log in</button>
+  </form>
+</section>
+{% endblock %}

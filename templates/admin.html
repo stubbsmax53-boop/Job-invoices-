@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block title %}Invoices — {{ business_name }}{% endblock %}
+{% block content %}
+<section class="admin">
+  <div class="page-head">
+    <div>
+      <h1>Invoices</h1>
+      <p class="lede">Newest first. Open an invoice to set the amount, mark it sent or paid, or email it.</p>
+    </div>
+    <a class="button-link" href="{{ url_for('export_csv') }}">Export CSV</a>
+  </div>
+
+  {% if invoices %}
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Invoice</th>
+          <th>Date</th>
+          <th>Address</th>
+          <th>Tech</th>
+          <th>Amount</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for inv in invoices %}
+        <tr>
+          <td><a href="{{ url_for('invoice_page', invoice_id=inv.id) }}">{{ inv.invoice_number }}</a></td>
+          <td>{{ format_local(inv.created_at) }}</td>
+          <td>{{ inv.address }}</td>
+          <td>{{ inv.tech_name }}</td>
+          <td>{{ format_money(inv.amount) }}</td>
+          <td><span class="status status-{{ inv.status }}">{{ status_label[inv.status] }}</span></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <p class="empty">No invoices yet. Jobs submitted on the intake form will show up here.</p>
+  {% endif %}
+</section>
+{% endblock %}

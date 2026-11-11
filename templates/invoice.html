@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% block title %}{{ invoice.invoice_number }} — {{ business_name }}{% endblock %}
+{% block main_class %}invoice-main{% endblock %}
+{% block content %}
+<div class="invoice-toolbar no-print">
+  <a href="{{ url_for('admin') }}">← All invoices</a>
+  <div class="toolbar-actions">
+    <button type="button" onclick="window.print()">Print / Save as PDF</button>
+    <a class="button-link" href="{{ url_for('invoice_pdf', invoice_id=invoice.id) }}">Download PDF</a>
+    <a class="button-link" href="{{ url_for('send_invoice', invoice_id=invoice.id) }}">Send email</a>
+    <form method="post" action="{{ url_for('set_status', invoice_id=invoice.id) }}">
+      <input type="hidden" name="status" value="sent">
+      <button type="submit">Mark sent</button>
+    </form>
+    <form method="post" action="{{ url_for('set_status', invoice_id=invoice.id) }}">
+      <input type="hidden" name="status" value="paid">
+      <button type="submit">Mark paid</button>
+    </form>
+    {% if invoice.status != 'draft' %}
+    <form method="post" action="{{ url_for('set_status', invoice_id=invoice.id) }}">
+      <input type="hidden" name="status" value="draft">
+      <button type="submit" class="secondary">Back to draft</button>
+    </form>
+    {% endif %}
+  </div>
+</div>
+
+<article class="invoice-sheet">
+  <header class="invoice-head">
+    <div>
+      <p class="kicker">Invoice</p>
+      <h1>{{ invoice.invoice_number }}</h1>
+      <p class="business">{{ business_name }}</p>
+    </div>
+    <dl class="meta">
+      <div>
+        <dt>Date</dt>
+        <dd>{{ format_local(invoice.created_at, '%B %d, %Y') }}</dd>
+      </div>
+      <div>
+        <dt>Status</dt>
+        <dd><span class="status status-{{ invoice.status }}">{{ status_label[invoice.status] }}</span></dd>
+      </div>
+    </dl>
+  </header>
+
+  <section>
+    <h2>Job address</h2>
+    <p class="preserve">{{ invoice.address }}</p>
+  </section>
+
+  <section>
+    <h2>Description of work</h2>
+    <p class="preserve">{{ invoice.description }}</p>
+  </section>
+
+  <section>
+    <h2>Technician</h2>
+    <p>{{ invoice.tech_name }}</p>
+  </section>
+
+  <section class="amount-block">
+    <h2>Amount due</h2>
+    <p class="amount">{{ format_money(invoice.amount) }}</p>
+    <form method="post" action="{{ url_for('invoice_page', invoice_id=invoice.id) }}" class="amount-form no-print">
+      <label for="amount">Set or update amount (USD)</label>
+      <div class="amount-row">
+        <input id="amount" name="amount" type="text" inputmode="decimal"
+               value="{{ invoice.amount or '' }}" placeholder="0.00">
+        <button type="submit">Save amount</button>
+      </div>
+    </form>
+  </section>
+</article>
+{% endblock %}

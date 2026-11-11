@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}Report a job — {{ business_name }}{% endblock %}
+{% block content %}
+<section class="card">
+  <h1>Report a completed job</h1>
+  <p class="lede">Enter the job address, what got done, and your name. This creates an invoice for review.</p>
+  <form method="post" action="{{ url_for('intake') }}" novalidate>
+    <label for="address">Job address</label>
+    <textarea id="address" name="address" rows="2" required>{{ values.address }}</textarea>
+    {% if errors.address %}<p class="error">{{ errors.address }}</p>{% endif %}
+
+    <label for="description">Description of work done</label>
+    <textarea id="description" name="description" rows="5" required>{{ values.description }}</textarea>
+    {% if errors.description %}<p class="error">{{ errors.description }}</p>{% endif %}
+
+    <label for="tech_name">Tech name</label>
+    <input id="tech_name" name="tech_name" type="text" required value="{{ values.tech_name }}">
+    {% if errors.tech_name %}<p class="error">{{ errors.tech_name }}</p>{% endif %}
+
+    <button type="submit">Submit job</button>
+  </form>
+</section>
+{% endblock %}
