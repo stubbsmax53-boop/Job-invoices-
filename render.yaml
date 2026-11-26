@@ -19,6 +19,16 @@ services:
         generateValue: true
       - key: ADMIN_PASSWORD
         sync: false
+      # Shared secret for /webhooks/sms, /webhooks/email, and /api/intake/messages.
+      # Leave unset until Max chooses a token. The app boots either way.
+      - key: INTAKE_WEBHOOK_TOKEN
+        sync: false
+      # When set, SMS webhooks must carry a valid X-Twilio-Signature.
+      - key: TWILIO_AUTH_TOKEN
+        sync: false
+      # Optional. Rule-based parsing runs when this is empty.
+      - key: OPENAI_API_KEY
+        sync: false
 
 databases:
   - name: job-invoices-db

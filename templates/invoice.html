@@ -3,7 +3,12 @@
 {% block main_class %}invoice-main{% endblock %}
 {% block content %}
 <div class="invoice-toolbar no-print">
-  <a href="{{ url_for('admin') }}">← All invoices</a>
+  <div>
+    <a href="{{ url_for('admin') }}">← All invoices</a>
+    {% if source_message %}
+    <div><a href="{{ url_for('message_detail', message_id=source_message.id) }}">Opened from a message</a></div>
+    {% endif %}
+  </div>
   <div class="toolbar-actions">
     <button type="button" onclick="window.print()">Print / Save as PDF</button>
     <a class="button-link" href="{{ url_for('invoice_pdf', invoice_id=invoice.id) }}">Download PDF</a>

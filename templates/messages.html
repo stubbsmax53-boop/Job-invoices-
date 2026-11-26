@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+{% block title %}Messages — {{ business_name }}{% endblock %}
+{% block content %}
+<section class="admin">
+  <div class="page-head">
+    <div>
+      <h1>Messages</h1>
+      <p class="lede">Texts, email, and notes pasted here. A job is opened when the message has a street address. Later notes from the same person fill in anything that was missing.</p>
+      {% if needs_review %}
+      <p class="lede"><strong>{{ needs_review }}</strong> still need a job address or a correction.</p>
+      {% endif %}
+    </div>
+  </div>
+
+  <details class="card paste-form">
+    <summary>Paste a message</summary>
+    <form method="post" action="{{ url_for('messages_page') }}">
+      <label for="sender">From</label>
+      <input id="sender" name="sender" type="text" autocomplete="off" placeholder="Name, phone, or email">
+
+      <label for="subject">Subject</label>
+      <input id="subject" name="subject" type="text" autocomplete="off" placeholder="Optional">
+
+      <label for="text">Message</label>
+      <textarea id="text" name="text" rows="6" required placeholder="Hi, this is Sarah. I need the living room ceiling patched. 1842 S Broadway, Denver CO. Tuesday at 2pm."></textarea>
+      <button type="submit">Create job from this message</button>
+    </form>
+  </details>
+
+  <nav class="filters" aria-label="Filter messages">
+    <a href="{{ url_for('messages_page') }}" {% if not status_filter %}class="active"{% endif %}>All</a>
+    <a href="{{ url_for('messages_page', status='needs_review') }}" {% if status_filter == 'needs_review' %}class="active"{% endif %}>Needs review</a>
+    <a href="{{ url_for('messages_page', status='created') }}" {% if status_filter == 'created' %}class="active"{% endif %}>Job created</a>
+    <a href="{{ url_for('messages_page', status='failed') }}" {% if status_filter == 'failed' %}class="active"{% endif %}>Failed</a>
+  </nav>
+
+  {% if cards %}
+  <div class="message-list">
+    {% for card in cards %}
+    {% set msg = card.message %}
+    {% set parsed = card.parsed %}
+    <article class="message-card">
+      <header>
+        <span class="msg-status msg-{{ msg.status }}">{{ message_status_labels.get(msg.status, msg.status) }}</span>
+        <span>{{ message_source_labels.get(msg.source, msg.source) }}</span>
+        <time datetime="{{ msg.received_at }}">{{ format_local(msg.received_at, '%b %d, %Y %I:%M %p') }}</time>
+      </header>
+      <p class="sender">
+        {{ parsed.client_name or msg.sender or "Unknown sender" }}
+        {% if parsed.phone_display %} · {{ parsed.phone_display }}{% endif %}
+        {% if parsed.email %} · {{ parsed.email }}{% endif %}
+      </p>
+      {% if msg.subject %}<p class="hint">{{ msg.subject }}</p>{% endif %}
+      <dl class="parsed-grid">
+        {% if parsed.address %}
+        <dt>Address</dt>
+        <dd>{{ parsed.address }}{% if 'address' in parsed.filled_from_contact %} <span class="hint">from an earlier message</span>{% endif %}</dd>
+        {% endif %}
+        {% if parsed.requested_when %}
+        <dt>Requested</dt>
+        <dd>{{ parsed.requested_when }}</dd>
+        {% endif %}
+        {% if parsed.description %}
+        <dt>Work</dt>
+        <dd>{{ parsed.description }}</dd>
+        {% endif %}
+      </dl>
+      <p class="raw-text clamp">{{ msg.raw_text }}</p>
+      {% if msg.note %}<p class="hint">{{ msg.note }}</p>{% endif %}
+      {% if msg.error %}<p class="error">{{ msg.error }}</p>{% endif %}
+      <div class="card-actions">
+        {% if msg.invoice_id and msg.invoice_number %}
+        <a class="button-link" href="{{ url_for('invoice_page', invoice_id=msg.invoice_id) }}">{{ msg.invoice_number }}</a>
+        {% endif %}
+        <a class="button-link secondary" href="{{ url_for('message_detail', message_id=msg.id) }}">Review</a>
+      </div>
+    </article>
+    {% endfor %}
+  </div>
+  {% else %}
+  <p class="empty">No messages yet. Paste one above, or point a phone number or inbound email at the webhooks.</p>
+  {% endif %}
+</section>
+{% endblock %}
