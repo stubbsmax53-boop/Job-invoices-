@@ -21,6 +21,7 @@
           <th>Tech</th>
           <th>Amount</th>
           <th>Status</th>
+          <th>Job</th>
         </tr>
       </thead>
       <tbody>
@@ -32,6 +33,13 @@
           <td>{{ inv.tech_name }}</td>
           <td>{{ format_money(inv.amount) }}</td>
           <td><span class="status status-{{ inv.status }}">{{ status_label[inv.status] }}</span></td>
+          <td>
+            {% if inv.job_id and inv.job_name %}
+            <a href="{{ url_for('job_detail', job_id=inv.job_id) }}">{{ inv.job_customer }} — {{ inv.job_name }}</a>
+            {% else %}
+            —
+            {% endif %}
+          </td>
         </tr>
         {% endfor %}
       </tbody>

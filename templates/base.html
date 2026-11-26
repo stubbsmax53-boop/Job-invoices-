@@ -6,17 +6,22 @@
   <title>{% block title %}{{ business_name }}{% endblock %}</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
   <link rel="manifest" href="{{ url_for('static', filename='manifest.webmanifest') }}">
+  <link rel="icon" href="{{ url_for('static', filename='icon.png') }}">
   <link rel="apple-touch-icon" href="{{ url_for('static', filename='icon.png') }}">
   <meta name="theme-color" content="#1a1a1a">
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-title" content="Job Intake">
+  <meta name="apple-mobile-web-app-title" content="Steady Drywall">
 </head>
 <body>
   <header class="site-header no-print">
-    <a class="brand" href="{{ url_for('intake') }}">{{ business_name }}</a>
+    <a class="brand" href="{% if show_private_nav %}{{ url_for('dashboard') }}{% else %}{{ url_for('intake') }}{% endif %}">{{ business_name }}</a>
     <nav>
-      <a href="{{ url_for('intake') }}">Job intake</a>
+      <a href="{{ url_for('dashboard') }}">Home</a>
+      <a href="{{ url_for('activity_page') }}">Inbox{% if show_private_nav %} <span class="badge{% if not unreviewed_count %} zero{% endif %}">{{ unreviewed_count }}</span>{% endif %}</a>
+      <a href="{{ url_for('jobs_board') }}">Jobs</a>
+      <a href="{{ url_for('logistics_page') }}">Logistics</a>
       <a href="{{ url_for('messages_page') }}">Messages</a>
+      <a href="{{ url_for('intake') }}">Intake</a>
       <a href="{{ url_for('admin') }}">Invoices</a>
     </nav>
   </header>

@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block title %}New job — {{ business_name }}{% endblock %}
+{% block main_class %}wide{% endblock %}
+{% block content %}
+<p class="no-print"><a href="{{ url_for('jobs_board') }}">← All jobs</a></p>
+<section class="card">
+  <h1>New job</h1>
+  <p class="lede">Customer, street, and a price for the job. Crew is a name you set yourself.</p>
+  {% if errors.form %}<p class="error">{{ errors.form }}</p>{% endif %}
+  <form method="post" action="{{ url_for('job_new') }}">
+    {% include "_job_fields.html" %}
+    {% if match %}
+    <p class="hint"><a href="{{ url_for('job_detail', job_id=match.id) }}">Open {{ match.customer }} — {{ match.job_name }}</a></p>
+    <label class="check">
+      <input type="checkbox" name="force_new" value="1">
+      Save as a separate job anyway
+    </label>
+    {% endif %}
+    <button type="submit">Save job</button>
+  </form>
+</section>
+
+<section class="card">
+  <h2>Crew list</h2>
+  <p class="hint">Names you can drop onto a job. Saving a job does not pick a crew for you.</p>
+  {% if roster %}
+  <ul class="crew-list">
+    {% for person in roster %}
+    <li>
+      <span>{{ person.name }}</span>
+      <form method="post" action="{{ url_for('crew_delete', member_id=person.id) }}">
+        <input type="hidden" name="next" value="{{ url_for('job_new') }}">
+        <button type="submit" class="secondary">Remove</button>
+      </form>
+    </li>
+    {% endfor %}
+  </ul>
+  {% endif %}
+  <form method="post" action="{{ url_for('crew_add') }}">
+    <input type="hidden" name="next" value="{{ url_for('job_new') }}">
+    <label for="crew_name">Add a name</label>
+    <div class="amount-row">
+      <input id="crew_name" name="name" type="text" maxlength="80" placeholder="Jordan">
+      <button type="submit">Add</button>
+    </div>
+  </form>
+</section>
+{% endblock %}

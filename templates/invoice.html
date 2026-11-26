@@ -8,6 +8,9 @@
     {% if source_message %}
     <div><a href="{{ url_for('message_detail', message_id=source_message.id) }}">Opened from a message</a></div>
     {% endif %}
+    {% if linked_job %}
+    <div><a href="{{ url_for('job_detail', job_id=linked_job.id) }}">{{ linked_job.customer }} — {{ linked_job.job_name }}</a></div>
+    {% endif %}
   </div>
   <div class="toolbar-actions">
     <button type="button" onclick="window.print()">Print / Save as PDF</button>
@@ -29,6 +32,22 @@
     {% endif %}
   </div>
 </div>
+
+<section class="card no-print">
+  <h2>Job on the board</h2>
+  <form method="post" action="{{ url_for('link_invoice_job', invoice_id=invoice.id) }}">
+    <label for="job_id">Link this invoice</label>
+    <div class="amount-row">
+      <select id="job_id" name="job_id">
+        <option value="">Not linked</option>
+        {% for job in board_jobs %}
+        <option value="{{ job.id }}" {% if invoice.job_id == job.id %}selected{% endif %}>{{ job.customer }} — {{ job.job_name }}</option>
+        {% endfor %}
+      </select>
+      <button type="submit">Save job link</button>
+    </div>
+  </form>
+</section>
 
 <article class="invoice-sheet">
   <header class="invoice-head">

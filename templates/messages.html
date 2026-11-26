@@ -72,6 +72,9 @@
         {% if msg.invoice_id and msg.invoice_number %}
         <a class="button-link" href="{{ url_for('invoice_page', invoice_id=msg.invoice_id) }}">{{ msg.invoice_number }}</a>
         {% endif %}
+        {% if msg.job_id %}
+        <a class="button-link secondary" href="{{ url_for('job_detail', job_id=msg.job_id) }}">Job</a>
+        {% endif %}
         <a class="button-link secondary" href="{{ url_for('message_detail', message_id=msg.id) }}">Review</a>
       </div>
     </article>

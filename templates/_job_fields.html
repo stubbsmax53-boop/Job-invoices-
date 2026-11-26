@@ -1,0 +1,50 @@
+<label for="customer">Customer / GC</label>
+<input id="customer" name="customer" type="text" required list="customer-list" value="{{ values.customer }}" maxlength="160" placeholder="Five Valleys, Bushco, MJL, IJD, All Tucker">
+<datalist id="customer-list">
+  {% for name in customers %}
+  <option value="{{ name }}"></option>
+  {% endfor %}
+</datalist>
+{% if errors.customer %}<p class="error">{{ errors.customer }}</p>{% endif %}
+
+<label for="job_name">Job name</label>
+<input id="job_name" name="job_name" type="text" required value="{{ values.job_name }}" maxlength="200" placeholder="Lolo hang">
+{% if errors.job_name %}<p class="error">{{ errors.job_name }}</p>{% endif %}
+
+<label for="street_address">Street address</label>
+<input id="street_address" name="street_address" type="text" required value="{{ values.street_address }}" maxlength="300" placeholder="120 Ridge Rd" autocomplete="street-address">
+{% if errors.street_address %}<p class="error">{{ errors.street_address }}</p>{% endif %}
+
+<label for="town">Town</label>
+<input id="town" name="town" type="text" value="{{ values.town }}" maxlength="120" placeholder="Missoula">
+{% if errors.town %}<p class="error">{{ errors.town }}</p>{% endif %}
+
+<label for="status">Status</label>
+<select id="status" name="status">
+  {% for key, label in statuses %}
+  <option value="{{ key }}" {% if values.status == key %}selected{% endif %}>{{ label }}</option>
+  {% endfor %}
+</select>
+{% if errors.status %}<p class="error">{{ errors.status }}</p>{% endif %}
+
+<label for="crew">Crew</label>
+<input id="crew" name="crew" type="text" value="{{ values.crew }}" maxlength="300" placeholder="Jordan, Sam">
+<p class="hint">Type the crew for this job. The list below is only a reminder.</p>
+{% if errors.crew %}<p class="error">{{ errors.crew }}</p>{% endif %}
+
+<label for="start_date">Start date</label>
+<input id="start_date" name="start_date" type="date" value="{{ values.start_date }}">
+{% if errors.start_date %}<p class="error">{{ errors.start_date }}</p>{% endif %}
+
+<label for="target_finish">Target finish</label>
+<input id="target_finish" name="target_finish" type="date" value="{{ values.target_finish }}">
+{% if errors.target_finish %}<p class="error">{{ errors.target_finish }}</p>{% endif %}
+
+<label for="amount">Job price (USD)</label>
+<input id="amount" name="amount" type="text" inputmode="decimal" value="{{ values.amount }}" placeholder="4200.00">
+<p class="hint">Crew is paid this price for the job.</p>
+{% if errors.amount %}<p class="error">{{ errors.amount }}</p>{% endif %}
+
+<label for="notes">Notes</label>
+<textarea id="notes" name="notes" rows="4">{{ values.notes }}</textarea>
+{% if errors.notes %}<p class="error">{{ errors.notes }}</p>{% endif %}

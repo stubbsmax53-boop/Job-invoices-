@@ -1,7 +1,7 @@
 {
-  "name": "Job Intake & Invoices",
-  "short_name": "Job Intake",
-  "start_url": "/",
+  "name": "Steady Drywall",
+  "short_name": "Drywall",
+  "start_url": "/admin/home",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#1a1a1a",

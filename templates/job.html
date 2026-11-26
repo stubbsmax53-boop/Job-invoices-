@@ -1,0 +1,249 @@
+{% extends "base.html" %}
+{% block title %}{{ job.job_name }} — {{ business_name }}{% endblock %}
+{% block main_class %}wide{% endblock %}
+{% block content %}
+<p class="no-print"><a href="{{ url_for('jobs_board') }}">← All jobs</a></p>
+<section class="message-card">
+  <header>
+    <span class="status status-{{ job.status }}">{{ job_status_label[job.status] }}</span>
+    <span>{{ job.customer }}</span>
+  </header>
+  <h1>{{ job.job_name }}</h1>
+  <p>{{ job.street_address }}{% if job.town %}, {{ job.town }}{% endif %}</p>
+  <p class="hint">
+    {% if job.crew %}{{ job.crew }} · {% else %}Crew not set · {% endif %}
+    {{ format_day(job.start_date) if job.start_date else "Start open" }}
+    → {{ format_day(job.target_finish) if job.target_finish else "Finish open" }}
+    · {{ format_money(job.amount) }}
+  </p>
+  {% if job.notes %}<p class="preserve">{{ job.notes }}</p>{% endif %}
+  <form method="post" action="{{ url_for('job_status', job_id=job.id) }}" class="inline-form">
+    <label for="quick-status">Status</label>
+    <select id="quick-status" name="status">
+      {% for key, label in statuses %}
+      <option value="{{ key }}" {% if job.status == key %}selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
+    <button type="submit">Update status</button>
+  </form>
+</section>
+
+<details class="card fold">
+  <summary>Edit job</summary>
+  {% if errors.form %}<p class="error">{{ errors.form }}</p>{% endif %}
+  <form method="post" action="{{ url_for('job_detail', job_id=job.id) }}">
+    {% include "_job_fields.html" %}
+    <button type="submit">Save job</button>
+  </form>
+  <h2>Add a crew name to this job</h2>
+  {% if roster %}
+  <ul class="crew-list">
+    {% for person in roster %}
+    <li>
+      <span>{{ person.name }}</span>
+      <form method="post" action="{{ url_for('job_add_crew', job_id=job.id) }}">
+        <input type="hidden" name="name" value="{{ person.name }}">
+        <button type="submit">Add to this job</button>
+      </form>
+    </li>
+    {% endfor %}
+  </ul>
+  {% else %}
+  <p class="hint">The crew list is empty. Add a name and it stays available on the next job.</p>
+  {% endif %}
+  <form method="post" action="{{ url_for('crew_add') }}">
+    <input type="hidden" name="next" value="{{ url_for('job_detail', job_id=job.id) }}">
+    <label for="crew_name">Add to the crew list</label>
+    <div class="amount-row">
+      <input id="crew_name" name="name" type="text" maxlength="80" placeholder="Jordan">
+      <button type="submit">Add</button>
+    </div>
+  </form>
+</details>
+
+<section class="card">
+  <h2>Materials</h2>
+  {% if orders %}
+  <div class="message-list">
+    {% for order in orders %}
+    <article class="message-card">
+      <header>
+        <span class="status status-{{ order.status }}">{{ order_status_label[order.status] }}</span>
+        <span>{{ order.supplier or "Supplier open" }}</span>
+      </header>
+      <p class="sender">{{ order.qty }} {{ order.item }}</p>
+      <p class="hint">Ordered {{ format_day(order.order_date) if order.order_date else "—" }} · Delivers {{ format_day(order.delivery_date) if order.delivery_date else "—" }}</p>
+      {% if order.notes %}<p class="hint">{{ order.notes }}</p>{% endif %}
+      <form method="post" action="{{ url_for('order_update', order_id=order.id) }}" class="stack-form">
+        <input type="hidden" name="item" value="{{ order.item }}">
+        <input type="hidden" name="qty" value="{{ order.qty }}">
+        <input type="hidden" name="supplier" value="{{ order.supplier }}">
+        <input type="hidden" name="order_date" value="{{ order.order_date or '' }}">
+        <input type="hidden" name="notes" value="{{ order.notes }}">
+        <label for="delivery-{{ order.id }}">Delivery date</label>
+        <input id="delivery-{{ order.id }}" name="delivery_date" type="date" value="{{ order.delivery_date or '' }}">
+        <label for="order-status-{{ order.id }}">Status</label>
+        <select id="order-status-{{ order.id }}" name="status">
+          {% for key, label in order_statuses %}
+          <option value="{{ key }}" {% if order.status == key %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+        <button type="submit">Save order</button>
+      </form>
+      <form method="post" action="{{ url_for('order_update', order_id=order.id) }}">
+        <input type="hidden" name="action" value="delete">
+        <button type="submit" class="secondary">Remove</button>
+      </form>
+    </article>
+    {% endfor %}
+  </div>
+  {% else %}
+  <p class="empty">No material orders yet.</p>
+  {% endif %}
+  <form method="post" action="{{ url_for('job_add_order', job_id=job.id) }}">
+    <h2>Add material</h2>
+    <label for="item">Item</label>
+    <input id="item" name="item" type="text" required maxlength="200" placeholder="1/2in board, mud, tape, corner bead">
+    <label for="qty">Qty</label>
+    <input id="qty" name="qty" type="text" maxlength="80" placeholder="40 sheets">
+    <label for="supplier">Supplier</label>
+    <input id="supplier" name="supplier" type="text" maxlength="160" placeholder="Supplier">
+    <label for="order_date">Order date</label>
+    <input id="order_date" name="order_date" type="date">
+    <label for="delivery_date">Delivery date</label>
+    <input id="delivery_date" name="delivery_date" type="date">
+    <label for="order_status">Status</label>
+    <select id="order_status" name="status">
+      {% for key, label in order_statuses %}
+      <option value="{{ key }}">{{ label }}</option>
+      {% endfor %}
+    </select>
+    <label for="order_notes">Notes</label>
+    <input id="order_notes" name="notes" type="text" maxlength="2000">
+    <button type="submit">Add order</button>
+  </form>
+</section>
+
+<section class="card">
+  <h2>Equipment and dumpsters</h2>
+  {% if needs %}
+  <div class="message-list">
+    {% for need in needs %}
+    <article class="message-card">
+      <header>
+        <span class="status">{{ need.kind|replace('_', ' ') }}</span>
+        <span class="status status-{{ need.status }}">{{ need.status|replace('_', ' ') }}</span>
+      </header>
+      <p class="sender">{{ need.description }}</p>
+      <p class="hint">Needed {{ format_day(need.needed_date) if need.needed_date else "—" }}</p>
+      <form method="post" action="{{ url_for('need_update', need_id=need.id) }}" class="stack-form">
+        <input type="hidden" name="kind" value="{{ need.kind }}">
+        <input type="hidden" name="description" value="{{ need.description }}">
+        <input type="hidden" name="notes" value="{{ need.notes }}">
+        <label for="need-date-{{ need.id }}">Needed date</label>
+        <input id="need-date-{{ need.id }}" name="needed_date" type="date" value="{{ need.needed_date or '' }}">
+        <label for="need-status-{{ need.id }}">Status</label>
+        <select id="need-status-{{ need.id }}" name="status">
+          {% for key, label in need_statuses %}
+          <option value="{{ key }}" {% if need.status == key %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+        <button type="submit">Save</button>
+      </form>
+      <form method="post" action="{{ url_for('need_update', need_id=need.id) }}">
+        <input type="hidden" name="action" value="delete">
+        <button type="submit" class="secondary">Remove</button>
+      </form>
+    </article>
+    {% endfor %}
+  </div>
+  {% else %}
+  <p class="empty">Nothing listed.</p>
+  {% endif %}
+  <form method="post" action="{{ url_for('job_add_need', job_id=job.id) }}">
+    <label for="kind">Kind</label>
+    <select id="kind" name="kind">
+      {% for key, label in need_kinds %}
+      <option value="{{ key }}">{{ label }}</option>
+      {% endfor %}
+    </select>
+    <label for="need_description">What is needed</label>
+    <input id="need_description" name="description" type="text" required maxlength="300" placeholder="20-yard dumpster">
+    <label for="needed_date">Needed date</label>
+    <input id="needed_date" name="needed_date" type="date">
+    <button type="submit">Add</button>
+  </form>
+</section>
+
+<section class="card">
+  <h2>Invoices</h2>
+  {% if invoices %}
+  <ul class="plain-list">
+    {% for inv in invoices %}
+    <li>
+      <a href="{{ url_for('invoice_page', invoice_id=inv.id) }}">{{ inv.invoice_number }}</a>
+      <span class="status status-{{ inv.status }}">{{ status_label[inv.status] }}</span>
+      {{ format_money(inv.amount) }}
+    </li>
+    {% endfor %}
+  </ul>
+  {% else %}
+  <p class="empty">No invoice linked yet.</p>
+  {% endif %}
+  <form method="post" action="{{ url_for('job_create_invoice', job_id=job.id) }}">
+    <button type="submit">Open an invoice for this job</button>
+  </form>
+  <form method="post" action="{{ url_for('job_attach_invoice', job_id=job.id) }}">
+    <label for="invoice_id">Link an existing invoice</label>
+    <div class="amount-row">
+      <select id="invoice_id" name="invoice_id">
+        <option value="">Choose</option>
+        {% for inv in all_invoices %}
+        <option value="{{ inv.id }}">{{ inv.invoice_number }} — {{ inv.address }}</option>
+        {% endfor %}
+      </select>
+      <button type="submit">Link</button>
+    </div>
+  </form>
+</section>
+
+<section>
+  <h2 class="section-title">Messages</h2>
+  {% if messages %}
+  <div class="message-list">
+    {% for msg in messages %}
+    <article class="message-card">
+      <header>
+        <span>{{ message_source_labels.get(msg.source, msg.source) }}</span>
+        <time>{{ format_local(msg.received_at, '%b %d, %Y') }}</time>
+      </header>
+      <p class="raw-text clamp">{{ msg.raw_text }}</p>
+      <a class="button-link secondary" href="{{ url_for('message_detail', message_id=msg.id) }}">Open message</a>
+    </article>
+    {% endfor %}
+  </div>
+  {% else %}
+  <p class="empty">No intake messages linked yet.</p>
+  {% endif %}
+</section>
+
+<section>
+  <h2 class="section-title">Inbox</h2>
+  {% if activity %}
+  <div class="message-list">
+    {% for item in activity %}
+    <article class="message-card">
+      <header>
+        <span class="msg-status {% if item.reviewed %}msg-created{% else %}msg-needs_review{% endif %}">{% if item.reviewed %}Reviewed{% else %}Unreviewed{% endif %}</span>
+        <span>{{ activity_source_label(item.source) }}</span>
+        <time>{{ format_local(item.received_at, '%b %d, %Y %I:%M %p') }}</time>
+      </header>
+      <p>{{ item.summary }}</p>
+    </article>
+    {% endfor %}
+  </div>
+  {% else %}
+  <p class="empty">Nothing in the inbox for this job yet.</p>
+  {% endif %}
+</section>
+{% endblock %}
