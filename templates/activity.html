@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% block title %}Inbox — {{ business_name }}{% endblock %}
+{% block main_class %}wide{% endblock %}
+{% block content %}
+<section class="admin">
+  <div class="page-head">
+    <div>
+      <h1>Inbox</h1>
+      <p class="lede">Texts, email, job reports, and notes from the assistant. New items stay unreviewed until you tick them. Nothing here is sent out.</p>
+      <p class="lede"><strong>{{ unreviewed }}</strong> unreviewed.</p>
+    </div>
+    {% if unreviewed %}
+    <form method="post" action="{{ url_for('activity_mark_all') }}">
+      <button type="submit">Mark all reviewed</button>
+    </form>
+    {% endif %}
+  </div>
+
+  <nav class="filters" aria-label="Filter inbox">
+    <a href="{{ url_for('activity_page', show='unreviewed') }}" {% if show == 'unreviewed' %}class="active"{% endif %}>Unreviewed</a>
+    <a href="{{ url_for('activity_page', show='all') }}" {% if show == 'all' %}class="active"{% endif %}>All</a>
+    <a href="{{ url_for('activity_page', show='reviewed') }}" {% if show == 'reviewed' %}class="active"{% endif %}>Reviewed</a>
+  </nav>
+
+  {% if rows %}
+  <div class="message-list">
+    {% for item in rows %}
+    <article class="message-card">
+      <header>
+        <span class="msg-status {% if item.reviewed %}msg-created{% else %}msg-needs_review{% endif %}">{% if item.reviewed %}Reviewed{% else %}Unreviewed{% endif %}</span>
+        <span>{{ activity_source_label(item.source) }}</span>
+        {% if item.sender and item.sender|lower != item.source|lower and item.sender|lower != activity_source_label(item.source)|lower %}
+        <span>{{ item.sender }}</span>
+        {% endif %}
+        <time datetime="{{ item.received_at }}">{{ format_local(item.received_at, '%b %d, %Y %I:%M %p') }}</time>
+      </header>
+      <p class="sender">{{ item.summary }}</p>
+      {% if item.address %}<p class="hint">{{ item.address }}</p>{% endif %}
+      {% if item.body %}<p class="raw-text clamp">{{ item.body }}</p>{% endif %}
+      <div class="card-actions">
+        {% if item.job_id %}
+        <a class="button-link" href="{{ url_for('job_detail', job_id=item.job_id) }}">{% if item.job_name %}{{ item.job_customer }} — {{ item.job_name }}{% else %}Job {{ item.job_id }}{% endif %}</a>
+        {% endif %}
+        {% if item.message_id %}
+        <a class="button-link secondary" href="{{ url_for('message_detail', message_id=item.message_id) }}">Message</a>
+        {% endif %}
+        {% if item.invoice_id and item.invoice_number %}
+        <a class="button-link secondary" href="{{ url_for('invoice_page', invoice_id=item.invoice_id) }}">{{ item.invoice_number }}</a>
+        {% endif %}
+        <form method="post" action="{{ url_for('activity_review', activity_id=item.id) }}">
+          <input type="hidden" name="show" value="{{ show }}">
+          <input type="hidden" name="reviewed" value="{{ 0 if item.reviewed else 1 }}">
+          <button type="submit" class="{% if item.reviewed %}secondary{% endif %}">{% if item.reviewed %}Mark unreviewed{% else %}Mark reviewed{% endif %}</button>
+        </form>
+      </div>
+    </article>
+    {% endfor %}
+  </div>
+  {% else %}
+  <p class="empty">{% if show == 'unreviewed' %}Nothing waiting for review.{% else %}Nothing in this view.{% endif %}</p>
+  {% endif %}
+</section>
+{% endblock %}

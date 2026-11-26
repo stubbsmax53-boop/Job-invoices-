@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% block title %}Jobs — {{ business_name }}{% endblock %}
+{% block main_class %}wide{% endblock %}
+{% block content %}
+<section class="admin">
+  <div class="page-head">
+    <div>
+      <h1>Jobs</h1>
+      <p class="lede">One card per job. Crew is whoever you type here. Pay is the job price.</p>
+    </div>
+    <a class="button-link" href="{{ url_for('job_new') }}">New job</a>
+  </div>
+
+  <nav class="filters" aria-label="Filter by status">
+    <a href="{{ url_for('jobs_board', customer=customer, week=1 if week else none) }}" {% if not status %}class="active"{% endif %}>All</a>
+    {% for key, label in statuses %}
+    <a href="{{ url_for('jobs_board', status=key, customer=customer, week=1 if week else none) }}" {% if status == key %}class="active"{% endif %}>{{ label }}</a>
+    {% endfor %}
+    <a href="{{ url_for('jobs_board', status=status, customer=customer, week=1 if not week else none) }}" {% if week %}class="active"{% endif %}>This week</a>
+  </nav>
+
+  <form class="filter-form" method="get" action="{{ url_for('jobs_board') }}">
+    {% if status %}<input type="hidden" name="status" value="{{ status }}">{% endif %}
+    {% if week %}<input type="hidden" name="week" value="1">{% endif %}
+    <label for="customer">Customer</label>
+    <div class="amount-row">
+      <select id="customer" name="customer">
+        <option value="">All customers</option>
+        {% for name in customers %}
+        <option value="{{ name }}" {% if customer == name %}selected{% endif %}>{{ name }}</option>
+        {% endfor %}
+      </select>
+      <button type="submit">Filter</button>
+    </div>
+  </form>
+
+  {% if week %}
+  <p class="hint">{{ format_day(week_start) }} – {{ format_day(week_end) }}</p>
+  {% endif %}
+
+  {% if job_rows %}
+  <div class="message-list">
+    {% for job in job_rows %}
+    <article class="message-card">
+      <header>
+        <span class="status status-{{ job.status }}">{{ job_status_label[job.status] }}</span>
+        <span>{{ job.customer }}</span>
+        {% if job.town %}<span>{{ job.town }}</span>{% endif %}
+      </header>
+      <p class="sender"><a href="{{ url_for('job_detail', job_id=job.id) }}">{{ job.job_name }}</a></p>
+      <p>{{ job.street_address }}{% if job.town %}, {{ job.town }}{% endif %}</p>
+      <p class="hint">
+        {% if job.crew %}{{ job.crew }} · {% endif %}
+        {{ format_day(job.start_date) if job.start_date else "Start open" }}
+        → {{ format_day(job.target_finish) if job.target_finish else "Finish open" }}
+        · {{ format_money(job.amount) }}
+      </p>
+      <form method="post" action="{{ url_for('job_status', job_id=job.id) }}" class="inline-form">
+        <input type="hidden" name="next" value="{{ request.full_path }}">
+        <label class="visually-hidden" for="status-{{ job.id }}">Status for {{ job.job_name }}</label>
+        <select id="status-{{ job.id }}" name="status">
+          {% for key, label in statuses %}
+          <option value="{{ key }}" {% if job.status == key %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+        <button type="submit">Update status</button>
+      </form>
+    </article>
+    {% endfor %}
+  </div>
+  {% else %}
+  <p class="empty">{% if week %}No jobs land this week.{% else %}No jobs on the board yet.{% endif %}</p>
+  {% endif %}
+</section>
+{% endblock %}

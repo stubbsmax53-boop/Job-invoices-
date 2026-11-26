@@ -17,7 +17,24 @@
   {% if message.invoice_id and message.invoice_number %}
   <p><a class="button-link" href="{{ url_for('invoice_page', invoice_id=message.invoice_id) }}">Open {{ message.invoice_number }}</a></p>
   {% endif %}
+  {% if linked_job %}
+  <p><a class="button-link secondary" href="{{ url_for('job_detail', job_id=linked_job.id) }}">{{ linked_job.customer }} — {{ linked_job.job_name }}</a></p>
+  {% endif %}
 </article>
+
+<section class="card no-print">
+  <h2>Job on the board</h2>
+  <form method="post" action="{{ url_for('link_message_job', message_id=message.id) }}">
+    <label for="board_job_id">Link this message</label>
+    <select id="board_job_id" name="job_id">
+      <option value="">Not linked</option>
+      {% for job in board_jobs %}
+      <option value="{{ job.id }}" {% if message.job_id == job.id %}selected{% endif %}>{{ job.customer }} — {{ job.job_name }}</option>
+      {% endfor %}
+    </select>
+    <button type="submit">Save job link</button>
+  </form>
+</section>
 
 {% if contact %}
 <section class="contact-box">

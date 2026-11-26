@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+{% block title %}Home — {{ business_name }}{% endblock %}
+{% block main_class %}wide{% endblock %}
+{% block content %}
+<section class="admin">
+  <div class="page-head">
+    <div>
+      <h1>Home</h1>
+      <p class="lede">Steady Drywall jobs, deliveries, and anything waiting for a look.</p>
+    </div>
+    <a class="button-link" href="{{ url_for('job_new') }}">New job</a>
+  </div>
+
+  <a class="inbox-banner" href="{{ url_for('activity_page') }}">
+    <strong>{{ unreviewed }}</strong>
+    <span>{% if unreviewed == 1 %}item waiting for review{% elif unreviewed %}items waiting for review{% else %}Inbox is clear{% endif %}</span>
+  </a>
+
+  <h2>Jobs by status</h2>
+  <div class="stat-grid">
+    {% for key, label in statuses %}
+    <a class="stat" href="{{ url_for('jobs_board', status=key) }}">
+      <strong>{{ counts[key] }}</strong>
+      <span>{{ label }}</span>
+    </a>
+    {% endfor %}
+  </div>
+
+  <h2 class="section-title">This week</h2>
+  <p class="hint">{{ format_day(week_start) }} – {{ format_day(week_end) }}. Jobs whose start or finish falls this week.</p>
+  {% if week_jobs %}
+  <div class="message-list">
+    {% for job in week_jobs %}
+    <article class="message-card">
+      <header>
+        <span class="status status-{{ job.status }}">{{ job_status_label[job.status] }}</span>
+        <span>{{ job.customer }}</span>
+      </header>
+      <p class="sender"><a href="{{ url_for('job_detail', job_id=job.id) }}">{{ job.job_name }}</a></p>
+      <p>{{ job.street_address }}{% if job.town %}, {{ job.town }}{% endif %}</p>
+      <p class="hint">
+        {{ format_day(job.start_date) if job.start_date else "Start open" }}
+        → {{ format_day(job.target_finish) if job.target_finish else "Finish open" }}
+        {% if job.crew %} · {{ job.crew }}{% endif %}
+        {% if job.amount %} · {{ format_money(job.amount) }}{% endif %}
+      </p>
+    </article>
+    {% endfor %}
+  </div>
+  {% else %}
+  <p class="empty">No jobs land this week yet.</p>
+  {% endif %}
+
+  <h2 class="section-title">Deliveries in the next 7 days</h2>
+  {% if deliveries %}
+  <div class="message-list">
+    {% for order in deliveries %}
+    <article class="message-card">
+      <header>
+        <time>{{ format_day(order.delivery_date) }}</time>
+        <span class="status status-{{ order.status }}">{{ order_status_label[order.status] }}</span>
+      </header>
+      <p class="sender">{{ order.qty }} {{ order.item }}</p>
+      <p><a href="{{ url_for('job_detail', job_id=order.job_id) }}">{{ order.job_customer }} — {{ order.job_name }}</a>{% if order.job_town %}, {{ order.job_town }}{% endif %}</p>
+      {% if order.supplier %}<p class="hint">{{ order.supplier }}</p>{% endif %}
+    </article>
+    {% endfor %}
+  </div>
+  {% else %}
+  <p class="empty">No deliveries dated in the next 7 days.</p>
+  {% endif %}
+
+  <h2 class="section-title">Unpaid invoices</h2>
+  <p class="hint">{{ unpaid|length }} open{% if unpaid_total %} · {{ format_money(unpaid_total) }} entered{% endif %}</p>
+  {% if unpaid %}
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>Invoice</th><th>Address</th><th>Amount</th><th>Status</th></tr>
+      </thead>
+      <tbody>
+        {% for inv in unpaid %}
+        <tr>
+          <td><a href="{{ url_for('invoice_page', invoice_id=inv.id) }}">{{ inv.invoice_number }}</a></td>
+          <td>{{ inv.address }}</td>
+          <td>{{ format_money(inv.amount) }}</td>
+          <td><span class="status status-{{ inv.status }}">{{ status_label[inv.status] }}</span></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <p class="empty">Every invoice is marked paid.</p>
+  {% endif %}
+</section>
+{% endblock %}

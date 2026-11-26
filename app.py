@@ -16,6 +16,7 @@ from functools import wraps
 from pathlib import Path
 from typing import Any, Iterable
 from urllib.parse import quote
+from xml.sax.saxutils import escape
 from zoneinfo import ZoneInfo
 
 from flask import (
@@ -31,6 +32,8 @@ from flask import (
     session,
     url_for,
 )
+import jobs
+from board import register_board
 from intake import (
     apply_corrections,
     fields_from_mapping,
@@ -295,7 +298,7 @@ def schema_statements(kind: str) -> list[str]:
         tables = [POSTGRES_SCHEMA, CONTACTS_POSTGRES, MESSAGES_POSTGRES]
     else:
         tables = [SQLITE_SCHEMA, CONTACTS_SQLITE, MESSAGES_SQLITE]
-    return [*tables, *MESSAGE_INDEXES]
+    return [*tables, *MESSAGE_INDEXES, *jobs.tables(kind)]
 
 
 def init_db() -> None:
@@ -308,6 +311,7 @@ def init_db() -> None:
             db = connect_db()
             for statement in schema_statements(db.kind):
                 db.execute(statement)
+            jobs.migrate(db)
             db.commit()
             return
         except Exception as exc:  # pragma: no cover - retry around first-boot races
@@ -352,18 +356,34 @@ def format_money(amount: str | None) -> str:
 
 
 def parse_amount(raw: str | None) -> str | None:
-    if raw is None:
-        return None
-    cleaned = raw.strip().replace(",", "").replace("$", "")
-    if cleaned == "":
+    return jobs.parse_amount(raw)
+
+
+def format_day(value: str | None, fmt: str = "%b %d, %Y") -> str:
+    """Format a calendar date without shifting it across a timezone."""
+    if not value:
+        return "—"
+    try:
+        day = datetime.strptime(str(value)[:10], "%Y-%m-%d")
+    except ValueError:
+        return str(value)
+    return day.strftime(fmt)
+
+
+def _optional_job_id(value: Any) -> int | None:
+    if value is None or value is False or isinstance(value, bool) or value == "":
         return None
     try:
-        value = Decimal(cleaned)
-    except InvalidOperation as exc:
-        raise ValueError("Enter a valid dollar amount.") from exc
-    if value < 0:
-        raise ValueError("Amount cannot be negative.")
-    return f"{value.quantize(Decimal('0.01'))}"
+        return int(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def settle_message(message_id: int | None, invoice_id: int | None) -> None:
+    """Log an inbound message and link it to a board job when the address matches."""
+    if not message_id and not invoice_id:
+        return
+    jobs.settle_inbound(get_db(), message_id=message_id, invoice_id=invoice_id)
 
 
 def next_invoice_number(db: Database) -> str:
@@ -387,8 +407,8 @@ def create_invoice(db: Database, values: dict[str, str]) -> int:
             """
             INSERT INTO invoices (
                 invoice_number, address, description, tech_name,
-                amount, status, created_at, updated_at
-            ) VALUES (?, ?, ?, ?, NULL, 'draft', ?, ?)
+                amount, status, created_at, updated_at, job_id
+            ) VALUES (?, ?, ?, ?, NULL, 'draft', ?, ?, ?)
             RETURNING id
             """,
             (
@@ -398,6 +418,7 @@ def create_invoice(db: Database, values: dict[str, str]) -> int:
                 values["tech_name"],
                 now,
                 now,
+                _optional_job_id(values.get("job_id")),
             ),
         ).fetchone()
         db.commit()
@@ -432,6 +453,13 @@ def admin_required(view):
 
 @app.context_processor
 def inject_globals():
+    show_private = (not app.config["ADMIN_PASSWORD"]) or bool(session.get("admin_ok"))
+    unreviewed = 0
+    if show_private:
+        try:
+            unreviewed = jobs.unreviewed_count(get_db())
+        except Exception:
+            unreviewed = 0
     return {
         "business_name": app.config["BUSINESS_NAME"],
         "admin_protected": bool(app.config["ADMIN_PASSWORD"]),
@@ -450,6 +478,12 @@ def inject_globals():
             "needs_review": "Needs review",
             "failed": "Failed",
         },
+        "format_day": format_day,
+        "job_status_label": dict(jobs.JOB_STATUSES),
+        "order_status_label": dict(jobs.ORDER_STATUSES),
+        "activity_source_label": jobs.source_label,
+        "show_private_nav": show_private,
+        "unreviewed_count": unreviewed,
     }
 
 
@@ -476,7 +510,23 @@ def intake():
             if not values[field]:
                 errors[field] = f"{label} is required."
         if not errors:
-            invoice_id = create_invoice(get_db(), values)
+            matched = jobs.find_job_by_address(get_db(), values["address"])
+            payload = dict(values)
+            if matched is not None:
+                payload["job_id"] = int(matched["id"])
+            invoice_id = create_invoice(get_db(), payload)
+            summary = f"Job report from {values['tech_name']}: {values['address']}"
+            if len(summary) > 500:
+                summary = summary[:499].rstrip() + "..."
+            jobs.record_activity(
+                get_db(),
+                source="form",
+                sender=values["tech_name"],
+                summary=summary,
+                body=values["description"],
+                address=values["address"],
+                job_id=int(matched["id"]) if matched is not None else None,
+            )
             return redirect(url_for("thanks", invoice_id=invoice_id))
     return render_template("intake.html", errors=errors, values=values)
 
@@ -513,7 +563,12 @@ def logout():
 @admin_required
 def admin():
     invoices = get_db().execute(
-        "SELECT * FROM invoices ORDER BY id DESC"
+        """
+        SELECT i.*, j.job_name AS job_name, j.customer AS job_customer
+        FROM invoices i
+        LEFT JOIN jobs j ON j.id = i.job_id
+        ORDER BY i.id DESC
+        """
     ).fetchall()
     return render_template("admin.html", invoices=invoices)
 
@@ -536,7 +591,8 @@ def invoice_page(invoice_id: int):
         db.commit()
         flash("Amount saved.", "ok")
         return redirect(url_for("invoice_page", invoice_id=invoice_id))
-    source_message = get_db().execute(
+    db = get_db()
+    source_message = db.execute(
         """
         SELECT id, source FROM messages
         WHERE invoice_id = ?
@@ -545,10 +601,15 @@ def invoice_page(invoice_id: int):
         """,
         (invoice_id,),
     ).fetchone()
+    linked_job = None
+    if invoice["job_id"]:
+        linked_job = jobs.get_job(db, int(invoice["job_id"]))
     return render_template(
         "invoice.html",
         invoice=invoice,
         source_message=source_message,
+        linked_job=linked_job,
+        board_jobs=jobs.list_jobs(db),
     )
 
 
@@ -635,8 +696,11 @@ def export_csv():
 @admin_required
 def invoice_pdf(invoice_id: int):
     invoice = invoice_or_404(invoice_id)
+    linked_job = None
+    if invoice["job_id"]:
+        linked_job = jobs.get_job(get_db(), int(invoice["job_id"]))
     buf = io.BytesIO()
-    build_pdf(buf, invoice)
+    build_pdf(buf, invoice, job=linked_job)
     buf.seek(0)
     filename = f"{invoice['invoice_number']}.pdf"
     return Response(
@@ -646,7 +710,7 @@ def invoice_pdf(invoice_id: int):
     )
 
 
-def build_pdf(buf: io.BytesIO, invoice: AttrRow) -> None:
+def build_pdf(buf: io.BytesIO, invoice: AttrRow, job: AttrRow | None = None) -> None:
     name = app.config["BUSINESS_NAME"]
     doc = SimpleDocTemplate(
         buf,
@@ -735,6 +799,13 @@ def build_pdf(buf: io.BytesIO, invoice: AttrRow) -> None:
         meta,
         Paragraph("JOB ADDRESS", label),
         Paragraph(invoice["address"].replace("\n", "<br/>"), body),
+    ]
+    if job is not None:
+        story += [
+            Paragraph("JOB", label),
+            Paragraph(escape(f"{job['customer']} — {job['job_name']}"), body),
+        ]
+    story += [
         Paragraph("DESCRIPTION OF WORK", label),
         Paragraph(invoice["description"].replace("\n", "<br/>"), body),
         Paragraph("TECHNICIAN", label),
@@ -888,6 +959,7 @@ def webhook_sms():
         raw_text=fields["text"] or "",
         external_id=fields["external_id"],
     )
+    settle_message(result.message_id, result.invoice_id)
     _log_intake("sms", result)
     response = Response(
         '<?xml version="1.0" encoding="UTF-8"?><Response></Response>',
@@ -913,6 +985,7 @@ def webhook_email():
         subject=fields["subject"] or "",
         external_id=fields["external_id"],
     )
+    settle_message(result.message_id, result.invoice_id)
     _log_intake("email", result)
     return _intake_json(result)
 
@@ -932,6 +1005,7 @@ def api_intake_messages():
         subject=fields["subject"] or "",
         external_id=fields["external_id"],
     )
+    settle_message(result.message_id, result.invoice_id)
     _log_intake("api", result)
     return _intake_json(result)
 
@@ -952,6 +1026,7 @@ def messages_page():
             raw_text=text,
             subject=request.form.get("subject") or "",
         )
+        settle_message(result.message_id, result.invoice_id)
         _log_intake("manual", result)
         if result.status == "created" and result.invoice_number:
             flash(f"Job {result.invoice_number} created from that message.", "ok")
@@ -1004,6 +1079,7 @@ def message_detail(message_id: int):
         if outcome is None:
             abort(404)
         if outcome.ok:
+            settle_message(message_id, outcome.invoice_id)
             if outcome.invoice_number:
                 flash(f"Job {outcome.invoice_number} created.", "ok")
             else:
@@ -1030,6 +1106,9 @@ def message_detail(message_id: int):
             (row["contact_id"], row["id"]),
         ).fetchall()
     parsed = ParsedMessage.from_json(row["parsed_json"]).to_dict() if row else {}
+    linked_job = None
+    if row is not None and row["job_id"]:
+        linked_job = jobs.get_job(db, int(row["job_id"]))
     return render_template(
         "message.html",
         message=row,
@@ -1039,6 +1118,8 @@ def message_detail(message_id: int):
         errors=errors,
         form_values=form_values,
         hints=hints,
+        linked_job=linked_job,
+        board_jobs=jobs.list_jobs(db),
     )
 
 
@@ -1051,6 +1132,7 @@ def _contact_for(row: AttrRow | None):
     ).fetchone()
 
 
+register_board(app)
 init_db()
 
 

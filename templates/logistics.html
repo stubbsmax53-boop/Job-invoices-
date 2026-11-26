@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %}Logistics — {{ business_name }}{% endblock %}
+{% block main_class %}wide{% endblock %}
+{% block content %}
+<section class="admin">
+  <div class="page-head">
+    <div>
+      <h1>Logistics</h1>
+      <p class="lede">Open orders, upcoming deliveries, and equipment or dumpsters, earliest date first.</p>
+    </div>
+  </div>
+  {% if items %}
+  <div class="message-list">
+    {% for item in items %}
+    <article class="message-card">
+      <header>
+        <time>{{ format_day(item.date) if item.date else "No date" }}</time>
+        <span class="msg-status">{{ item.kind_label }}</span>
+        <span class="status status-{{ item.status }}">{{ item.status_label }}</span>
+      </header>
+      <p class="sender">{{ item.title }}</p>
+      <p><a href="{{ url_for('job_detail', job_id=item.job_id) }}">{{ item.detail }}</a></p>
+      {% if item.extra %}<p class="hint">{{ item.extra }}</p>{% endif %}
+    </article>
+    {% endfor %}
+  </div>
+  {% else %}
+  <p class="empty">Open orders and deliveries will show up here.</p>
+  {% endif %}
+</section>
+{% endblock %}
