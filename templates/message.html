@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+{% block title %}Message — {{ business_name }}{% endblock %}
+{% block content %}
+<p class="no-print"><a href="{{ url_for('messages_page') }}">← All messages</a></p>
+<article class="message-card">
+  <header>
+    <span class="msg-status msg-{{ message.status }}">{{ message_status_labels.get(message.status, message.status) }}</span>
+    <span>{{ message_source_labels.get(message.source, message.source) }}</span>
+    <time datetime="{{ message.received_at }}">{{ format_local(message.received_at, '%b %d, %Y %I:%M %p') }}</time>
+  </header>
+  {% if message.sender %}<p class="sender">{{ message.sender }}</p>{% endif %}
+  {% if message.subject %}<p class="hint">Subject: {{ message.subject }}</p>{% endif %}
+  <h2>Original message</h2>
+  <p class="raw-text">{{ message.raw_text }}</p>
+  {% if message.note %}<p class="hint">{{ message.note }}</p>{% endif %}
+  {% if message.error %}<p class="error">{{ message.error }}</p>{% endif %}
+  {% if message.invoice_id and message.invoice_number %}
+  <p><a class="button-link" href="{{ url_for('invoice_page', invoice_id=message.invoice_id) }}">Open {{ message.invoice_number }}</a></p>
+  {% endif %}
+</article>
+
+{% if contact %}
+<section class="contact-box">
+  <h2>Saved for this sender</h2>
+  <dl class="parsed-grid">
+    <dt>Name</dt><dd>{{ contact.name or "—" }}</dd>
+    <dt>Phone</dt><dd>{{ format_phone(contact.phone) if contact.phone else "—" }}</dd>
+    <dt>Email</dt><dd>{{ contact.email or "—" }}</dd>
+    <dt>Address</dt><dd>{{ contact.address or "—" }}</dd>
+  </dl>
+  <p class="hint">Details from this person accumulate here and fill in later messages.</p>
+</section>
+{% endif %}
+
+{% if hints %}
+<p class="hint">Blank fields below were filled from earlier messages from this sender. Create the job to use them.</p>
+{% endif %}
+
+<section class="card">
+  <h2>{% if message.invoice_id %}Create another job{% else %}Create the job{% endif %}</h2>
+  <p class="lede">Correct anything the parser missed. Creating another job leaves the earlier invoice in the list.</p>
+  {% if errors.form %}<p class="error">{{ errors.form }}</p>{% endif %}
+  <form method="post" action="{{ url_for('message_detail', message_id=message.id) }}" class="stack-actions">
+    <label for="client_name">Client name</label>
+    <input id="client_name" name="client_name" type="text" value="{{ form_values.client_name }}" maxlength="120">
+
+    <label for="phone">Phone</label>
+    <input id="phone" name="phone" type="tel" inputmode="tel" value="{{ form_values.phone }}" maxlength="40">
+    {% if errors.phone %}<p class="error">{{ errors.phone }}</p>{% endif %}
+
+    <label for="email">Email</label>
+    <input id="email" name="email" type="email" inputmode="email" value="{{ form_values.email }}" maxlength="200">
+    {% if errors.email %}<p class="error">{{ errors.email }}</p>{% endif %}
+
+    <label for="address">Job address</label>
+    <textarea id="address" name="address" rows="2" required>{{ form_values.address }}</textarea>
+    {% if errors.address %}<p class="error">{{ errors.address }}</p>{% endif %}
+
+    <label for="requested_when">Requested date and time</label>
+    <input id="requested_when" name="requested_when" type="text" value="{{ form_values.requested_when }}" maxlength="200">
+
+    <label for="description">Job description</label>
+    <textarea id="description" name="description" rows="5" required>{{ form_values.description }}</textarea>
+    {% if errors.description %}<p class="error">{{ errors.description }}</p>{% endif %}
+
+    <button type="submit">{% if message.invoice_id %}Create another job{% else %}Create job{% endif %}</button>
+  </form>
+</section>
+
+{% if related %}
+<section>
+  <h2>Other messages from this sender</h2>
+  <ul class="message-list">
+    {% for item in related %}
+    <li class="message-card">
+      <a href="{{ url_for('message_detail', message_id=item.id) }}">{{ message_source_labels.get(item.source, item.source) }} · {{ format_local(item.received_at, '%b %d, %Y %I:%M %p') }}</a>
+      <span class="msg-status msg-{{ item.status }}">{{ message_status_labels.get(item.status, item.status) }}</span>
+    </li>
+    {% endfor %}
+  </ul>
+</section>
+{% endif %}
+{% endblock %}

@@ -40,8 +40,8 @@ html, body {
   letter-spacing: 0.01em;
 }
 
-nav { display: flex; gap: 1.25rem; }
-nav a { color: var(--muted); text-decoration: none; }
+nav { display: flex; flex-wrap: wrap; gap: 0.65rem 1.25rem; }
+nav a { color: var(--muted); text-decoration: none; padding: 0.35rem 0; }
 nav a:hover { color: var(--ink); }
 
 main {
@@ -213,3 +213,120 @@ td a { color: var(--accent); font-weight: 700; text-decoration: none; }
 }
 
 .invoice-toolbar a.button-link, a.button-link { color: #fff; text-decoration: none; }
+a.button-link.secondary { background: #44403c; color: #fff; }
+
+.filters { display: flex; flex-wrap: wrap; gap: 0.4rem; margin: 0 0 1rem; }
+.filters a {
+  text-decoration: none;
+  color: var(--muted);
+  border: 1px solid var(--line);
+  background: var(--paper);
+  border-radius: 999px;
+  padding: 0.35rem 0.75rem;
+  font-size: 0.9rem;
+}
+.filters a.active { background: var(--ink); color: #fff; border-color: var(--ink); }
+
+.message-list { display: grid; gap: 0.75rem; }
+.message-card {
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 1rem;
+  overflow-wrap: anywhere;
+}
+.message-card header,
+.meta-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 0.75rem;
+  align-items: center;
+  margin-bottom: 0.45rem;
+}
+.sender { margin: 0 0 0.35rem; font-weight: 700; }
+.raw-text, .preserve-box {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  background: #fafaf9;
+  border-radius: 6px;
+  padding: 0.65rem 0.75rem;
+  margin: 0.5rem 0;
+}
+.clamp {
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.parsed-grid {
+  display: grid;
+  grid-template-columns: 7.5rem 1fr;
+  gap: 0.15rem 0.75rem;
+  margin: 0.55rem 0 0.2rem;
+}
+.parsed-grid dt {
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin: 0;
+}
+.parsed-grid dd { margin: 0; }
+.hint { color: var(--muted); font-size: 0.92rem; margin: 0.4rem 0; }
+.card-actions, .stack-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+.card-actions .button-link, .stack-actions button { margin-top: 0.35rem; }
+.msg-status {
+  display: inline-block;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  padding: 0.15rem 0.45rem;
+  border-radius: 999px;
+  background: #e7e5e4;
+  color: var(--draft);
+}
+.msg-created { background: #dcfce7; color: var(--paid); }
+.msg-needs_review { background: #fef3c7; color: #92400e; }
+.msg-failed { background: #fee2e2; color: var(--danger); }
+.contact-box {
+  background: #fafaf9;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 0.85rem 1rem;
+  margin: 0 0 1rem;
+}
+.paste-form { margin-bottom: 1.25rem; }
+.paste-form summary {
+  font-weight: 700;
+  cursor: pointer;
+  padding: 0.35rem 0;
+}
+.paste-form[open] summary { margin-bottom: 0.25rem; }
+
+@media (max-width: 640px) {
+  .site-header {
+    flex-wrap: wrap;
+    align-items: flex-start;
+    padding: 0.75rem 1rem;
+  }
+  main { margin: 1.1rem auto; }
+  h1 { font-size: 1.45rem; }
+  .card, .invoice-sheet, .message-card { padding: 1rem; }
+  .page-head { flex-direction: column; }
+  .parsed-grid { grid-template-columns: 1fr; gap: 0; }
+  .parsed-grid dt { margin-top: 0.55rem; }
+  .card-actions, .stack-actions { flex-direction: column; align-items: stretch; }
+  .card-actions .button-link,
+  .stack-actions button,
+  .paste-form button {
+    width: 100%;
+    text-align: center;
+  }
+  button, .button-link { padding: 0.7rem 1rem; }
+}
